@@ -66,17 +66,23 @@ for i in range(1, 4):
 
 print("Step 3: Compute Max TF-IDF")
 
+sumTFIDF = {}
 maxTFIDF = {}
 
 # Compute TF-IDF
 for idMot in bruteTermFrequency.keys():
     maxTFIDF[idMot] = 0
+    sumTFIDF[idMot] = 0
     for idDoc in bruteTermFrequency[idMot]:
         tf = bruteTermFrequency[idMot][idDoc] / nbWordsInDoc[idDoc]
         tfidf = tf * inverseDocumentFrequency[idMot]
         maxTFIDF[idMot] = max(maxTFIDF[idMot], tfidf)
+        sumTFIDF[idMot] += tfidf
 
-# Print 20 most important words
+# Print most important words
 sortedMaxTFIDF = sorted(maxTFIDF.items(), key=operator.itemgetter(1), reverse=True)
-for x in sortedMaxTFIDF[0:20]:
-    print("{:>30} {}".format(x[1], stems[x[0]]))
+sortedSumTFIDF = sorted(sumTFIDF.items(), key=operator.itemgetter(1), reverse=True)
+for i in range(0, 6160):
+    xMax = sortedMaxTFIDF[i]
+    xSum = sortedSumTFIDF[i]
+    print("{:>10.0f} {:<20} {:>10.0f} {}".format(xMax[1], stems[xMax[0]], xSum[1], stems[xSum[0]]))

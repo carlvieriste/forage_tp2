@@ -40,7 +40,7 @@ if os.path.exists("tfidf/bruteTermFreq.lamereamax") \
 
 else:
     print()
-    print("Step 2: Compute TF and IDF")
+    print("Step 2: Compute gross metrics")
 
     bruteTermFrequency = {}
     nbWordsInDoc = {}
@@ -98,32 +98,42 @@ else:
 print()
 print("Step 3: Compute TF-IDF metrics")
 
-sumTFIDF = {}
-maxTFIDF = {}
+sqNormTFIDF = {}
+termFrequency = {}
 
 # Compute TF-IDF
 numDocs = len(nbWordsInDoc)
 for idMot in bruteTermFrequency.keys():
-    maxTFIDF[idMot] = 0
-    sumTFIDF[idMot] = 0
+    sqNormTFIDF[idMot] = 0
+    termFrequency[idMot] = {}
     for idDoc in bruteTermFrequency[idMot]:
         tf = bruteTermFrequency[idMot][idDoc] / nbWordsInDoc[idDoc]
+        termFrequency[idMot][idDoc] = tf
         idf = math.log(numDocs / nbDocsContainingWord[idMot])
         tfidf = tf * idf
-        maxTFIDF[idMot] = max(maxTFIDF[idMot], tfidf)
-        sumTFIDF[idMot] += tfidf ** 2
+        sqNormTFIDF[idMot] += tfidf ** 2
+
+print("Saving Term Frequency...")
+
+with open("tfidf/tf.bin", "wb") as file:
+    pickle.dump(termFrequency, file, pickle.HIGHEST_PROTOCOL)
 
 print()
-print("Step 4: Output results (6160)")
+print("Step 4: Find keywords")
+
+sortedSumTFIDF = sorted(sqNormTFIDF.items(), key=operator.itemgetter(1), reverse=True)
+keywords = [x[0] for x in sortedSumTFIDF[0:6160]]
+
+print("Saving keywords...")
+
+with open("tfidf/keywords.bin", "wb") as file:
+    pickle.dump(keywords, file, pickle.HIGHEST_PROTOCOL)
+
+print()
+print("Step 5: Output results (6160)")
 
 with open("tfidf/out.txt", "w") as file:
-    with open("tfidf/keywords.txt", "w") as keywordsFile:
-        sortedMaxTFIDF = sorted(maxTFIDF.items(), key=operator.itemgetter(1), reverse=True)
-        sortedSumTFIDF = sorted(sumTFIDF.items(), key=operator.itemgetter(1), reverse=True)
-
-        file.write("{:>10} {:<20} {:>10} {}\n".format("Max TF-IDF", "Term", "Sum TF-IDF", "Term"))
-        for i in range(0, 6160):
-            xMax = sortedMaxTFIDF[i]
-            xSum = sortedSumTFIDF[i]
-            file.write("{:>10.3f} {:<20} {:>10.3f} {}\n".format(xMax[1], stems[xMax[0]], xSum[1], stems[xSum[0]]))
-            keywordsFile.write("{}\n".format(xSum[0]))
+    file.write("{:>12} {}\n".format("Norm TF-IDF", "Term"))
+    for i in range(0, 6160):
+        xSum = sortedSumTFIDF[i]
+        file.write("{:>12.3f} {}\n".format(xSum[1], stems[xSum[0]]))

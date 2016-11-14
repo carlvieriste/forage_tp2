@@ -1,7 +1,6 @@
 import pickle
 import os.path
 
-n_bytes = 2**31
 max_bytes = 2**31 - 1
 file_path = 'repr.bin'
 
@@ -16,7 +15,11 @@ with open(file_path, 'rb') as f_in:
 
         count += 1
         print(count)
+
+print("Building dic")
 docVectors = pickle.loads(bytes_in)
+
+print("Outputting")
 
 count = 0
 with open("out.csv", "w") as file:

@@ -45,9 +45,8 @@ for idDoc, docDic in docDicks.items():
 
 print("Output")
 
-n_bytes = 2**31
 max_bytes = 2**31 - 1
 bytes_out = pickle.dumps(docVectors)
 with open("repr.bin", "wb") as file:
-    for idx in range(0, n_bytes, max_bytes):
+    for idx in range(0, len(bytes_out), max_bytes):
         file.write(bytes_out[idx:idx+max_bytes])

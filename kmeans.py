@@ -26,7 +26,7 @@ assert docs.shape == (129000, 6160)
 N, D = docs.shape  # N documents, D dimensions
 K = 50  # K clusters
 W = np.ones((K, D))
-Y = np.zeros(N, dtype=np.int16)
+# Y is the labels, with shape: (N, 1) - defined later
 NUM_JOBS = 8
 CHUNK_SIZE = int(np.ceil(N / NUM_JOBS))
 CLUSTER_CHUNK_SIZE = int(np.ceil(K / NUM_JOBS))
@@ -34,32 +34,37 @@ CLUSTER_CHUNK_SIZE = int(np.ceil(K / NUM_JOBS))
 # 1. Set centers to random samples
 means = docs[np.random.choice(N, K, replace=False), :]
 
-for i in range(0, 10):  # TODO change this
+for i in range(0, 10):
     print("Iteration", i)
     print("Updating labels...")
     time0 = time.time()
 
-
     # 2. Update labels
-    def get_updated_labels(sub_docs):
-        dist_matrix = cdist(sub_docs, means, metric='euclidean')  # metric='wminkowski', w=W, p=2
-        return np.argmin(dist_matrix, axis=1)
+    def get_updated_labels(offset):
+        dist_matrix = cdist(docs[offset:offset + CHUNK_SIZE], means,
+                            metric='sqeuclidean')  # metric='wminkowski', w=W, p=2
+        i_min = np.argmin(dist_matrix, axis=1)
+        err = dist_matrix[np.arange(len(dist_matrix)), i_min]
+        return np.vstack((i_min, err))  # (2, n)
 
 
     result = Parallel(n_jobs=NUM_JOBS)(
-        delayed(get_updated_labels)(docs[i:i + CHUNK_SIZE]) for i in range(0, N, CHUNK_SIZE))
-    Y = np.concatenate(result, axis=0)
+        delayed(get_updated_labels)(i) for i in range(0, N, CHUNK_SIZE))
+    matrix_result = np.concatenate(result, axis=1)  # (2, N) => lignes : label, err
+    Y = matrix_result[0, :]
+    total_err = np.sum(matrix_result[1, :])
+    print("Err:", total_err)
 
     print("Done. Took", time.time() - time0)
     print("Updating means...")
     time0 = time.time()
 
     # 3. Update means
-    #for c in range(0, K):
     def calc_mean(c):
         # noinspection PyTypeChecker
         docs_in_cluster = docs[np.where(Y == c)]
         return np.average(docs_in_cluster, axis=0)
+
 
     result = Parallel(n_jobs=NUM_JOBS)(delayed(calc_mean)(c) for c in range(0, K))
     means = np.asarray(result)

@@ -1,4 +1,14 @@
 import pickle
+import numpy as np
+
+
+def pickle_big_object(o, filename):
+    max_bytes = 2 ** 31 - 1
+    bytes_out = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
+    with open(filename, "wb") as file:
+        for idx in range(0, len(bytes_out), max_bytes):
+            file.write(bytes_out[idx:idx + max_bytes])
+
 
 print("Load stuff")
 
@@ -7,6 +17,9 @@ with open("tfidf/keywords.bin", "rb") as file:
 
 with open("tfidf/tf.bin", "rb") as file:
     termFrequency = pickle.load(file)
+
+# with open("docDics.bin", "rb") as file:
+#    docDicks = pickle.load(file)
 
 print("Make doc representations")
 
@@ -27,17 +40,20 @@ for idTerm, term in termFrequency.items():
     if count % 1000 == 0:
         print(count)
 
+try:
+    pickle_big_object(docDicks, "docDics.bin")
+except OverflowError as e:
+    print(e)
+    pass
+
 print("Convert repr to vectors")
 
-docVectors = {}
+docVectorsMat = np.zeros((129000, 6160), dtype=np.float32)
 count = 0
 for idDoc, docDic in docDicks.items():
-    docVectors[idDoc] = []
-    for idTerm in keywords:
+    for idKw, idTerm in enumerate(keywords):
         if idTerm in docDic:
-            docVectors[idDoc].append(docDic[idTerm])
-        else:
-            docVectors[idDoc].append(0.0)
+            docVectorsMat[idDoc, idKw] = docDic[idTerm]
 
     count += 1
     if count % 1000 == 0:
@@ -45,8 +61,4 @@ for idDoc, docDic in docDicks.items():
 
 print("Output")
 
-max_bytes = 2**31 - 1
-bytes_out = pickle.dumps(docVectors)
-with open("repr.bin", "wb") as file:
-    for idx in range(0, len(bytes_out), max_bytes):
-        file.write(bytes_out[idx:idx+max_bytes])
+pickle_big_object(docVectorsMat, "repr.bin")

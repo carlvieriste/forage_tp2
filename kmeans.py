@@ -31,47 +31,57 @@ NUM_JOBS = 8
 CHUNK_SIZE = int(np.ceil(N / NUM_JOBS))
 CLUSTER_CHUNK_SIZE = int(np.ceil(K / NUM_JOBS))
 
-# 1. Set centers to random samples
-means = docs[np.random.choice(N, K, replace=False), :]
+for j in range(0, 4):
+    # 1. Set centers to random samples
+    means = docs[np.random.choice(N, K, replace=False), :]
+    total_err = 0
 
-for i in range(0, 10):
-    print("Iteration", i)
-    print("Updating labels...")
-    time0 = time.time()
+    for i in range(0, 100):
+        print("Iteration", i)
+        print("Updating labels...")
+        time0 = time.time()
 
-    # 2. Update labels
-    def get_updated_labels(offset):
-        dist_matrix = cdist(docs[offset:offset + CHUNK_SIZE], means,
-                            metric='sqeuclidean')  # metric='wminkowski', w=W, p=2
-        i_min = np.argmin(dist_matrix, axis=1)
-        err = dist_matrix[np.arange(len(dist_matrix)), i_min]
-        return np.vstack((i_min, err))  # (2, n)
-
-
-    result = Parallel(n_jobs=NUM_JOBS)(
-        delayed(get_updated_labels)(i) for i in range(0, N, CHUNK_SIZE))
-    matrix_result = np.concatenate(result, axis=1)  # (2, N) => lignes : label, err
-    Y = matrix_result[0, :]
-    total_err = np.sum(matrix_result[1, :])
-    print("Err:", total_err)
-
-    print("Done. Took", time.time() - time0)
-    print("Updating means...")
-    time0 = time.time()
-
-    # 3. Update means
-    def calc_mean(c):
-        # noinspection PyTypeChecker
-        docs_in_cluster = docs[np.where(Y == c)]
-        return np.average(docs_in_cluster, axis=0)
+        # 2. Update labels
+        def get_updated_labels(offset):
+            dist_matrix = cdist(docs[offset:offset + CHUNK_SIZE], means,
+                                metric='sqeuclidean')  # metric='wminkowski', w=W, p=2
+            i_min = np.argmin(dist_matrix, axis=1)
+            err = dist_matrix[np.arange(len(dist_matrix)), i_min]
+            return np.vstack((i_min, err))  # (2, n)
 
 
-    result = Parallel(n_jobs=NUM_JOBS)(delayed(calc_mean)(c) for c in range(0, K))
-    means = np.asarray(result)
-    print(means.shape)
+        result = Parallel(n_jobs=NUM_JOBS)(
+            delayed(get_updated_labels)(i) for i in range(0, N, CHUNK_SIZE))
+        matrix_result = np.concatenate(result, axis=1)  # (2, N) => lignes : label, err
+        Y = matrix_result[0, :]
+        total_err = np.sum(matrix_result[1, :])
+        print("Err:", total_err)
 
-    print("Done. Took", time.time() - time0)
+        print("Done. Took", time.time() - time0)
+        print("Updating means...")
+        time0 = time.time()
 
-for c in range(0, K):
-    # noinspection PyTypeChecker
-    print("Mean", c, "=", np.sum(Y == c), "-", np.sum(Y == c) / N)
+        # 3. Update means
+        def calc_mean(c):
+            # noinspection PyTypeChecker
+            docs_in_cluster = docs[np.where(Y == c)]
+            return np.average(docs_in_cluster, axis=0)
+
+
+        result = Parallel(n_jobs=NUM_JOBS)(delayed(calc_mean)(c) for c in range(0, K))
+        means = np.asarray(result)
+        print(means.shape)
+
+        print("Done. Took", time.time() - time0)
+
+    # Completed this attempt
+    with open("clustering/attempt" + str(j) + ".bin", "wb") as file:
+        pickle.dump(Y, file, pickle.HIGHEST_PROTOCOL)
+
+    with open("clustering/results.txt", "a") as file:
+        file.write("Attempt " + str(j) + " ==== " + time.ctime() + "\n")
+        file.write("Total dist from centers: " + str(total_err) + "\n")
+        for c in range(0, K):
+            # noinspection PyTypeChecker
+            file.write("{:<4} {:<6} {:<.3f}%\n".format(c, np.sum(Y == c), np.sum(Y == c) / N))
+        file.write("\n\n")

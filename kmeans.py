@@ -74,19 +74,27 @@ for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
         means = np.asarray(result)
 
         print("Done. Took", time.time() - time0)
+        print("Updating weights...")
+        time0 = time.time()
 
         # 4.1 Update weights
-        # Compute variance of each dim in each cluster (K, D)
-        variance = np.zeros((K, D))
+        # Compute stddev of each dim in each cluster (K, D)
+        # We use stddev since the weights are squared in the weighed minkowski distance
+        stddev = np.zeros((K, D))
         for c in range(0, K):
             docs_in_cluster = docs[np.where(Y == c)]
-            variance[c, :] = np.var(docs_in_cluster, axis=0)
+            stddev[c, :] = np.std(docs_in_cluster, axis=0)
         # New weights
-        W = W / (1.0 + variance)
+        W = W / (1.0 + stddev)
 
         # 4.2 Normalise weights
-        norms = np.linalg.norm(W, axis=1, ord=2)  # Get norm of each line
+        norms = np.linalg.norm(W, axis=1, ord=1)  # Get norm of each line
         W = C * W / norms[:, None]                # Normalize each line
+
+        #min_max = np.vstack((np.min(W, axis=1), np.max(W, axis=1)))
+        #print(np.transpose(min_max))
+
+        print("Done. Took", time.time() - time0)
 
     # Completed this attempt
     with open("clustering/attempt" + str(j) + ".bin", "wb") as file:

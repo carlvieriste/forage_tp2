@@ -25,18 +25,19 @@ assert docs.shape == (129000, 6160)
 
 N, D = docs.shape  # N documents, D dimensions
 K = 50  # K clusters
-W = np.ones((K, D))
+# W = np.ones((K, D))
 # Y is the labels, with shape: (N, 1) - defined later
 NUM_JOBS = 8
 CHUNK_SIZE = int(np.ceil(N / NUM_JOBS))
-CLUSTER_CHUNK_SIZE = int(np.ceil(K / NUM_JOBS))
 
-for j in range(0, 4):
+for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
+    K = num_clusters
+
     # 1. Set centers to random samples
     means = docs[np.random.choice(N, K, replace=False), :]
     total_err = 0
 
-    for i in range(0, 100):
+    for i in range(0, 50):
         print("Iteration", i)
         print("Updating labels...")
         time0 = time.time()
@@ -70,7 +71,6 @@ for j in range(0, 4):
 
         result = Parallel(n_jobs=NUM_JOBS)(delayed(calc_mean)(c) for c in range(0, K))
         means = np.asarray(result)
-        print(means.shape)
 
         print("Done. Took", time.time() - time0)
 
@@ -80,8 +80,12 @@ for j in range(0, 4):
 
     with open("clustering/results.txt", "a") as file:
         file.write("Attempt " + str(j) + " ==== " + time.ctime() + "\n")
+        file.write("Num. clusters: " + str(K) + "\n")
         file.write("Total dist from centers: " + str(total_err) + "\n")
+        max_num = 0
         for c in range(0, K):
             # noinspection PyTypeChecker
             file.write("{:<4} {:<6} {:<.3f}%\n".format(c, np.sum(Y == c), np.sum(Y == c) / N))
+            max_num = max(max_num, np.sum(means[c]))
+        file.write("L1 norm of mean of largest cluster: " + str(max_num) + "\n")
         file.write("\n\n")

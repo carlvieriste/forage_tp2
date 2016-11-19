@@ -23,9 +23,10 @@ def unpickle_big_object(file_path):
 docs = unpickle_big_object("repr.bin")
 assert docs.shape == (129000, 6160)
 
-N, D = docs.shape  # N documents, D dimensions
-K = 50  # K clusters
-# W = np.ones((K, D))
+N, D = docs.shape    # N documents, D dimensions
+K = 50               # K clusters
+W = np.ones((K, D))  # Weight of dimension d inside cluster c
+C = D                # C is the sum of weights of all dimensions inside a cluster.
 # Y is the labels, with shape: (N, 1) - defined later
 NUM_JOBS = 8
 CHUNK_SIZE = int(np.ceil(N / NUM_JOBS))
@@ -45,7 +46,7 @@ for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
         # 2. Update labels
         def get_updated_labels(offset):
             dist_matrix = cdist(docs[offset:offset + CHUNK_SIZE], means,
-                                metric='sqeuclidean')  # metric='wminkowski', w=W, p=2
+                                metric='wminkowski', w=W, p=2)
             i_min = np.argmin(dist_matrix, axis=1)
             err = dist_matrix[np.arange(len(dist_matrix)), i_min]
             return np.vstack((i_min, err))  # (2, n)
@@ -73,6 +74,19 @@ for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
         means = np.asarray(result)
 
         print("Done. Took", time.time() - time0)
+
+        # 4.1 Update weights
+        # Compute variance of each dim in each cluster (K, D)
+        variance = np.zeros((K, D))
+        for c in range(0, K):
+            docs_in_cluster = docs[np.where(Y == c)]
+            variance[c, :] = np.var(docs_in_cluster, axis=0)
+        # New weights
+        W = W / (1.0 + variance)
+
+        # 4.2 Normalise weights
+        norms = np.linalg.norm(W, axis=1, ord=2)  # Get norm of each line
+        W = C * W / norms[:, None]                # Normalize each line
 
     # Completed this attempt
     with open("clustering/attempt" + str(j) + ".bin", "wb") as file:

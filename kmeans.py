@@ -23,22 +23,27 @@ def unpickle_big_object(file_path):
 docs = unpickle_big_object("repr.bin")
 assert docs.shape == (129000, 6160)
 
+docs = docs[0:126900, :]  # TODO on ignore environ 2000 documents a la fin
+
 N, D = docs.shape    # N documents, D dimensions
 K = 50               # K clusters
-W = np.ones((K, D))  # Weight of dimension d inside cluster c
+# W is: Weight of dimension d inside cluster c - defined later
 C = D                # C is the sum of weights of all dimensions inside a cluster.
 # Y is the labels, with shape: (N, 1) - defined later
-NUM_JOBS = 8
+NUM_JOBS = 7
 CHUNK_SIZE = int(np.ceil(N / NUM_JOBS))
 
-for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
+np.set_printoptions(threshold=np.inf)
+
+for j, num_clusters in enumerate([150, 150]):
     K = num_clusters
+    W = np.ones((K, D))
 
     # 1. Set centers to random samples
     means = docs[np.random.choice(N, K, replace=False), :]
     total_err = 0
 
-    for i in range(0, 50):
+    for i in range(0, 20):
         print("Iteration", i)
         print("Updating labels...")
         time0 = time.time()
@@ -69,7 +74,6 @@ for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
             docs_in_cluster = docs[np.where(Y == c)]
             return np.average(docs_in_cluster, axis=0)
 
-
         result = Parallel(n_jobs=NUM_JOBS)(delayed(calc_mean)(c) for c in range(0, K))
         means = np.asarray(result)
 
@@ -97,8 +101,9 @@ for j, num_clusters in enumerate([150, 150, 200, 200, 200]):
         print("Done. Took", time.time() - time0)
 
     # Completed this attempt
-    with open("clustering/attempt" + str(j) + ".bin", "wb") as file:
-        pickle.dump(Y, file, pickle.HIGHEST_PROTOCOL)
+    with open("clustering/attempt_YW_" + str(j) + ".bin", "wb") as file:
+        pickle.dump((Y, W), file, pickle.HIGHEST_PROTOCOL)
+
 
     with open("clustering/results.txt", "a") as file:
         file.write("Attempt " + str(j) + " ==== " + time.ctime() + "\n")

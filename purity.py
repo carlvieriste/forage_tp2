@@ -25,17 +25,18 @@ N = 126900
 # attempt = "W_K_" + str(K)
 
 # docId -> NSF program
-P = np.genfromtxt("../sweetSummerChild.txt", delimiter=" ")
+P = np.genfromtxt("../purity/nsf_programs.txt", delimiter=" ")
 P = P[0:N, :]
 
 results = []
-for K, attempt in [(50, "K_50"), (100, "K_100"), (150, "K_150"), (200, "K_200"), (50, "W_K_50"), (100, "W_K_100"), (150, "W_K_150"), (200, "W_K_200")]:
-    with open("../clustering/best/best_" + attempt + ".bin", "rb") as file:
-        Y = pickle.load(file)
+# for K, attempt in [(50, "K_50"), (100, "K_100"), (150, "K_150"), (200, "K_200"), (50, "W_K_50"), (100, "W_K_100"), (150, "W_K_150"), (200, "W_K_200")]:
+for K, attempt in [(150, "W_W_K_50")]:
+    with open("../clustering/attempt_YW_0.bin", "rb") as file:
+        Y, W = pickle.load(file)
 
     Y = Y[0:N]
 
-    impurities = np.ones((200,))
+    impurities = np.ones((K,))
 
     for c in range(0, K):
         print("label", c)
@@ -45,8 +46,8 @@ for K, attempt in [(50, "K_50"), (100, "K_100"), (150, "K_150"), (200, "K_200"),
         impurities[c] = gini(prog_list)
         print(impurities[c])
 
-    results.append(impurities)
-    #np.savetxt("../purity/purity_" + attempt + ".csv", impurities, delimiter=';')
+    # results.append(impurities)
+    np.savetxt("../purity/purity_" + attempt + ".csv", impurities, delimiter=',')
 
-results = np.vstack(results).transpose()
-np.savetxt("../purity/purity.csv", results, delimiter=';')
+# results = np.vstack(results).transpose()
+# np.savetxt("../purity/purity.csv", results, delimiter=';')
